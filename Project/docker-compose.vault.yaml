@@ -1,0 +1,36 @@
+x-common-vault-env: &common-vault-env
+  VAULT_ADDR: $VAULT_ADDR
+  VAULT_ROOT_TOKEN: $VAULT_ROOT_TOKEN
+  VAULT_NO_AUTH: true
+
+services:
+  vault:
+    image: hashicorp/vault:1.14.0
+    container_name: secrets-manager
+    ports:
+      - "8200:8200"
+    volumes:
+      - ./vault_data:/vault/data
+      - ./config.hcl:/vault/config.hcl
+    cap_add:
+      - IPC_LOCK
+    environment:
+      <<: *common-vault-env
+    command: >
+      /bin/sh -c "
+        vault server -dev -config=/vault/config.hcl &
+        sleep 5 &&
+        export VAULT_TOKEN=$VAULT_ROOT_TOKEN &&
+        vault login $VAULT_ROOT_TOKEN &&
+        vault secrets disable secret/ &&
+        vault secrets enable -path=secret -version=1 kv &&
+        vault auth enable approle &&
+        tail -f /dev/null
+      "
+    networks:
+      - backend-network
+    restart: always
+
+  # The Vault container itself provides a web UI ("explorer") and its own HTTP API.
+  # By default, when the 'ui = true' option is set in config.hcl (which you have),
+  # the UI is accessible at http://localhost:8200/ and the API is also served via port 8200.
