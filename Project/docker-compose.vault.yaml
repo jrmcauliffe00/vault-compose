@@ -18,17 +18,18 @@ services:
       <<: *common-vault-env
     command: >
       /bin/sh -c "
-        vault server -dev -config=/vault/config.hcl &
+        vault server -dev -dev-root-token-id=$VAULT_ROOT_TOKEN -dev-listen-address=0.0.0.0:8200 -config=/vault/config.hcl &
         sleep 5 &&
+        export VAULT_ADDR='http://127.0.0.1:8200' &&
         export VAULT_TOKEN=$VAULT_ROOT_TOKEN &&
-        vault login $VAULT_ROOT_TOKEN &&
-        vault secrets disable secret/ &&
+        until vault status > /dev/null 2>&1; do sleep 1; done &&
+        vault secrets disable secret/ 2>/dev/null || true &&
         vault secrets enable -path=secret -version=1 kv &&
-        vault auth enable approle &&
+        vault auth enable approle 2>/dev/null || true &&
         tail -f /dev/null
       "
-    networks:
-      - backend-network
+    # networks:
+    #   - backend-network
     restart: always
 
   # The Vault container itself provides a web UI ("explorer") and its own HTTP API.
