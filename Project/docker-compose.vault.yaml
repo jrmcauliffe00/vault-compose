@@ -28,9 +28,19 @@ services:
         vault auth enable approle 2>/dev/null || true &&
         tail -f /dev/null
       "
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O- http://127.0.0.1:8200/v1/sys/health >/dev/null || curl -fsS http://127.0.0.1:8200/v1/sys/health >/dev/null"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     # networks:
     #   - backend-network
-    restart: always
+    restart: unless-stopped
 
   # The Vault container itself provides a web UI ("explorer") and its own HTTP API.
   # By default, when the 'ui = true' option is set in config.hcl (which you have),
